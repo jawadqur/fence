@@ -9,17 +9,55 @@ jobs:
   build:
     name: CI
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.6", "3.10"]
+
+
+    services:
+      db:
+        image: postgres:13.5
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres # pragma: allowlist secret`
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
       - name: Lint Repo
         uses: github/super-linter/slim@v4
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Dependencies
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+          source "$HOME/.poetry/env"
+          poetry install -vv
+          psql -h postgres -c 'SELECT version();' -U postgres
+          psql -h postgres -U postgres -c "create database fence_test_tmp"
+          pip list
+          sudo rm -f /etc/boto.cfg
+          mkdir -p tests/resources/keys; cd tests/resources/keys; openssl genrsa -out test_private_key.pem 2048; openssl rsa -in test_private_key.pem -pubout -out test_public_key.pem
+          openssl genrsa -out test_private_key_2.pem 2048; openssl rsa -in test_private_key_2.pem -pubout -out test_public_key_2.pem
+      - name: Run Tests
+        run: |
+          poetry run pytest -vv --cov=fence --cov-report xml tests
+
 
       - name: Build Image
         id: build-image
@@ -56,4 +94,3 @@ jobs:
 
       - name: Print image url
         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
-        

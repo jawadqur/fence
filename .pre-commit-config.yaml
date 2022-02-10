@@ -10,8 +10,8 @@ repos:
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: no-commit-to-branch
-        args: [--branch, develop, --branch, master, --pattern, release/.*]
+    # -   id: no-commit-to-branch
+    #     args: [--branch, develop, --branch, master, --pattern, release/.*]
 -   repo: https://github.com/psf/black
     rev: 21.5b2
     hooks:
