@@ -16,7 +16,8 @@ jobs:
 
 
     services:
-      db:
+      # Label used to access the service container
+      postgres:
         image: postgres:13.5
         env:
           POSTGRES_DB: postgres
@@ -25,6 +26,13 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
 
     steps:
       - name: Checkout Code
@@ -48,8 +56,8 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
           source "$HOME/.poetry/env"
           poetry install -vv
-          psql -h localhost -c 'SELECT version();' -U postgres
-          psql -h localhost -U postgres -c "create database fence_test_tmp"
+          psql -h postgres -c 'SELECT version();' -U postgres
+          psql -h postgres -U postgres -c "create database fence_test_tmp"
           pip list
           sudo rm -f /etc/boto.cfg
           mkdir -p tests/resources/keys; cd tests/resources/keys; openssl genrsa -out test_private_key.pem 2048; openssl rsa -in test_private_key.pem -pubout -out test_public_key.pem
